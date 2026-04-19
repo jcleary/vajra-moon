@@ -245,7 +245,7 @@
       </div>
 
       <!-- Scroll cue -->
-      <div class="absolute bottom-10 left-1/2 -translate-x-1/2 animate-bounce">
+      <div class="mt-12 flex justify-center animate-bounce">
         <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="#D4A843" stroke-width="1.5">
           <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
         </svg>
@@ -322,21 +322,16 @@
           </p>
         </div>
 
-        <!-- Card 3: Music -->
+        <!-- Card 3: Buddhist Teaching -->
         <div class="icon-card rounded-2xl p-8 text-center">
           <div class="flex justify-center mb-5">
             <div class="w-16 h-16 rounded-full flex items-center justify-center" style="background:rgba(212,168,67,0.12); border:1px solid rgba(212,168,67,0.3);">
-              <!-- Music note SVG -->
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" class="w-8 h-8" fill="none" stroke="#D4A843" stroke-width="1.5">
-                <path d="M20 36 L20 12 L38 8 L38 32"/>
-                <circle cx="16" cy="36" r="4"/>
-                <circle cx="34" cy="32" r="4"/>
-              </svg>
+              <img src="assets/buddha-2.svg" class="w-8 h-8" alt="" />
             </div>
           </div>
           <h3 class="gold-heading text-2xl font-medium mb-3">Buddhist Teaching</h3>
           <p class="text-sm leading-relaxed" style="color:rgba(245,237,216,0.72);">
-            Sessions include accessible teachings on Tibetan Buddhism and music - a full evening of practice and reflection.
+            Sessions include accessible teachings on Tibetan Buddhism - a full evening of practice and reflection.
           </p>
         </div>
 
@@ -373,12 +368,12 @@
             <div>
               <h3 class="gold-heading text-2xl font-medium mb-2">Dates</h3>
               <p class="text-base font-light leading-relaxed" style="color:rgba(245,237,216,0.85);">
-                2nd and 4th <strong class="font-semibold" style="color:#F5EDD8;">Friday</strong> of every month
+                2nd and 4th <strong class="font-semibold" style="color:#F5EDD8;">Friday</strong> of every month, <strong class="font-semibold" style="color:#F5EDD8;">6:00 pm – 8:00 pm</strong>
               </p>
               <div class="mt-4">
-                <h3 class="gold-heading text-2xl font-medium mb-2">Time</h3>
+                <h3 class="gold-heading text-2xl font-medium mb-2">Next Session</h3>
                 <p class="text-base font-light" style="color:rgba(245,237,216,0.85);">
-                  <strong class="font-semibold" style="color:#F5EDD8;">6:00 pm – 8:00 pm</strong>
+                  <strong class="font-semibold" style="color:#F5EDD8;" id="next-session">—</strong>
                 </p>
               </div>
               <div class="mt-4 pt-4" style="border-top: 1px solid rgba(212,168,67,0.15);">
@@ -447,7 +442,7 @@
         <h2 class="gold-heading text-5xl sm:text-6xl font-light mb-4">Our Community</h2>
         <div class="section-divider"></div>
         <p class="mt-6 text-base font-light max-w-xl mx-auto" style="color:rgba(245,237,216,0.65);">
-          Glimpses of our gatherings - meditation, teaching, music and shared meals in the heart of Manchester.
+          Glimpses of our gatherings - meditation, teaching and shared meals in the heart of Manchester.
         </p>
       </div>
 
@@ -472,7 +467,7 @@
         <div class="gallery-item rounded-2xl aspect-[4/3] overflow-hidden"
              style="box-shadow: 0 8px 40px rgba(0,0,0,0.45);">
           <img src="https://cdn.evbuc.com/images/1176446629/502862968779/1/original.20260202-133958"
-               alt="Buddhist teaching and music at Vajra Moon"
+               alt="Buddhist teaching at Vajra Moon"
                class="w-full h-full object-cover"
                onerror="this.parentElement.style.background='linear-gradient(135deg, #6B1010, #C8860A)'; this.style.display='none';" />
         </div>
@@ -576,6 +571,35 @@
   <script>
     // Copyright year
     document.getElementById('year').textContent = new Date().getFullYear();
+
+    // Next session calculator — 2nd and 4th Friday of every month
+    (function () {
+      function ordinal(n) {
+        const s = ['th','st','nd','rd'];
+        const v = n % 100;
+        return n + (s[(v - 20) % 10] || s[v] || s[0]);
+      }
+      function sessionsForMonth(year, month) {
+        const firstDay = new Date(year, month, 1).getDay(); // 0=Sun
+        const firstFri = 1 + ((5 - firstDay + 7) % 7);
+        return [firstFri + 7, firstFri + 21].map(d => new Date(year, month, d));
+      }
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      let next = null;
+      for (let i = 0; i < 3 && !next; i++) {
+        const d = new Date(today.getFullYear(), today.getMonth() + i, 1);
+        for (const s of sessionsForMonth(d.getFullYear(), d.getMonth())) {
+          if (s >= today) { next = s; break; }
+        }
+      }
+      if (next) {
+        const days   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+        const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+        document.getElementById('next-session').textContent =
+          days[next.getDay()] + ' ' + ordinal(next.getDate()) + ' ' + months[next.getMonth()] + ', 6–8pm';
+      }
+    })();
 
     // Sticky nav background on scroll
     const nav = document.getElementById('main-nav');
