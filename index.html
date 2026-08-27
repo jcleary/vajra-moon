@@ -391,6 +391,7 @@
                 <p class="text-base font-light" style="color:rgba(245,237,216,0.85);">
                   <strong class="font-semibold" style="color:#F5EDD8;" id="next-session">—</strong>
                 </p>
+                <p class="text-sm font-light italic mt-1" style="color:rgba(245,237,216,0.55); display:none;" id="session-skip-note"></p>
               </div>
               <div class="mt-4 pt-4" style="border-top: 1px solid rgba(212,168,67,0.15);">
                 <p class="text-sm" style="color:rgba(245,237,216,0.6);">
@@ -593,6 +594,11 @@
 
     // Next session calculator — 2nd and 4th Friday of every month
     (function () {
+      // Dates when the regular session is NOT running (YYYY-MM-DD, local time).
+      // When the next session would fall on one of these, we skip to the one
+      // after it and show a note. Once a skip date has passed it's ignored.
+      const SKIPS = ['2026-08-28'];
+
       function ordinal(n) {
         const s = ['th','st','nd','rd'];
         const v = n % 100;
@@ -603,20 +609,49 @@
         const firstFri = 1 + ((5 - firstDay + 7) % 7);
         return [firstFri + 7, firstFri + 21].map(d => new Date(year, month, d));
       }
+      const days   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+      const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+      function formatDate(d) {
+        return days[d.getDay()] + ' ' + ordinal(d.getDate()) + ' ' + months[d.getMonth()];
+      }
+      function dateKey(d) {
+        return d.getFullYear() + '-' +
+          String(d.getMonth() + 1).padStart(2, '0') + '-' +
+          String(d.getDate()).padStart(2, '0');
+      }
+
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      let next = null;
-      for (let i = 0; i < 3 && !next; i++) {
+
+      // Chronological list of upcoming sessions (look ahead ~6 months).
+      const upcoming = [];
+      for (let i = 0; i < 6; i++) {
         const d = new Date(today.getFullYear(), today.getMonth() + i, 1);
         for (const s of sessionsForMonth(d.getFullYear(), d.getMonth())) {
-          if (s >= today) { next = s; break; }
+          if (s >= today) upcoming.push(s);
         }
       }
+
+      // Walk forward: any skipped sessions we pass become the note,
+      // the first running session is shown as "next".
+      const skipped = [];
+      let next = null;
+      for (const s of upcoming) {
+        if (SKIPS.indexOf(dateKey(s)) !== -1) {
+          skipped.push(s);
+        } else {
+          next = s;
+          break;
+        }
+      }
+
       if (next) {
-        const days   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-        const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-        document.getElementById('next-session').textContent =
-          days[next.getDay()] + ' ' + ordinal(next.getDate()) + ' ' + months[next.getMonth()] + ', 6–8pm';
+        document.getElementById('next-session').textContent = formatDate(next) + ', 6–8pm';
+      }
+      if (skipped.length) {
+        const noteEl = document.getElementById('session-skip-note');
+        noteEl.textContent = 'No session on ' + skipped.map(formatDate).join(' or ') + '.';
+        noteEl.style.display = '';
       }
     })();
 
