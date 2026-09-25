@@ -209,7 +209,7 @@
   $("next").addEventListener("click", function () { scrollRail(1); });
 
   // Session dates: 2nd & 4th Friday, 6-8pm, minus any cancelled dates from the admin API.
-  var EXCLUSIONS_URL = "https://vajra-moon-admin.varjamoon.workers.dev";
+  var EXCLUSIONS_URL = "https://vajra-moon-admin.vajramoon.workers.dev";
   var excluded = [];
   function iso(d) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
   function fridays(y, m) {
