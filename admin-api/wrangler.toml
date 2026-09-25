@@ -1,0 +1,16 @@
+name = "vajra-moon-admin"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+# Serves the admin page from ./public; only /api/* runs the Worker first.
+[assets]
+directory = "./public"
+run_worker_first = ["/api/*"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "vajra-moon-exclusions"
+database_id = "547711d7-cad7-4555-8714-7094087e8f1f"
+migrations_dir = "migrations"
+
+# The passphrase is a secret, not a var:  npx wrangler secret put ADMIN_PASSPHRASE

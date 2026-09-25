@@ -62,7 +62,7 @@
     </div>
 
     <div style="display:flex; flex-direction:column; border-left:1px solid #101010">
-      <div id="next-tap" style="position:relative; flex:1; min-height:240px; background:#FFFFFF; overflow:hidden">
+      <div style="position:relative; flex:1; min-height:240px; background:#FFFFFF; overflow:hidden">
         <img src="assets/venue-exterior.jpg" alt="The Village Hall entrance on Deansgate Mews, with prayer flags and a Free Buddhist Meditation sign" style="width:100%; height:100%; min-height:240px; object-fit:cover; object-position:50% 50%; display:block">
       </div>
     </div>
@@ -172,31 +172,7 @@
 
   
 
-    <div id="secret" style="position:fixed; inset:0; z-index:60; background:rgba(16,16,16,0.72); display:none; align-items:center; justify-content:center; padding:20px">
-      <div style="width:100%; max-width:420px; background:#FFFFFF; border:1px solid #101010; color:#101010">
-        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 16px; background:#101010; color:#FFFFFF">
-          <span style="font-family:'DM Mono',monospace; font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:#F5C400">Secret menu — sessions</span>
-          <button type="button" id="cal-close" aria-label="Close" style="border:none; background:transparent; color:#FFFFFF; font-size:20px; line-height:1; cursor:pointer; padding:4px 6px">×</button>
-        </div>
-        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 16px; border-bottom:1px solid #101010">
-          <button type="button" id="cal-prev" aria-label="Previous month" style="width:40px; height:40px; border:1px solid #101010; background:#FFFFFF; font-size:16px; font-weight:900; cursor:pointer">←</button>
-          <span id="cal-label" style="font-size:17px; font-weight:900; letter-spacing:-0.02em"></span>
-          <button type="button" id="cal-next" aria-label="Next month" style="width:40px; height:40px; border:1px solid #101010; background:#FFFFFF; font-size:16px; font-weight:900; cursor:pointer">→</button>
-        </div>
-        <div style="display:grid; grid-template-columns:repeat(7,1fr); gap:4px; padding:12px 16px 4px; font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:#777777; text-align:center">
-          <span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span>
-        </div>
-        <div id="cal-cells" style="display:grid; grid-template-columns:repeat(7,1fr); gap:4px; padding:0 16px 16px">
-        </div>
-        <div style="padding:14px 16px; border-top:1px solid #101010; font-size:13px; color:#555555">Tap a day to add or remove a session.</div>
-        <div style="display:flex; gap:10px; padding:0 16px 16px">
-          <button type="button" id="cal-save" style="flex:1 1 auto; border:1px solid #101010; background:#F5C400; color:#101010; padding:12px 14px; min-height:44px; font-size:14px; font-weight:900; letter-spacing:-0.01em; cursor:pointer">Save</button>
-          <button type="button" id="cal-reset" style="flex:0 0 auto; border:1px solid #101010; background:#FFFFFF; color:#101010; padding:12px 14px; min-height:44px; font-size:14px; font-weight:700; cursor:pointer">Revert</button>
-        </div>
-      </div>
-    </div>
-  
-<script>
+    <script>
 (function () {
   var $ = function (id) { return document.getElementById(id); };
   var slides = [
@@ -232,40 +208,31 @@
   $("prev").addEventListener("click", function () { scrollRail(-1); });
   $("next").addEventListener("click", function () { scrollRail(1); });
 
-  // Session dates: 2nd & 4th Friday, 6-8pm, with optional per-browser overrides
-  var STORE = "vm-sessions-v1";
-  var state = { ov: loadOv(), draft: null, cal: null, taps: 0 };
-  function loadOv() {
-    try {
-      var p = JSON.parse(localStorage.getItem(STORE));
-      if (!p) return { add: [], rm: [] };
-      return { add: Array.isArray(p.add) ? p.add : [], rm: Array.isArray(p.rm) ? p.rm : [] };
-    } catch (e) { return { add: [], rm: [] }; }
-  }
+  // Session dates: 2nd & 4th Friday, 6-8pm, minus any cancelled dates from the admin API.
+  // Set to the deployed Worker's URL, e.g. "https://vajra-moon-admin.<account>.workers.dev".
+  var EXCLUSIONS_URL = "";
+  var excluded = [];
   function iso(d) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
   function fridays(y, m) {
     var out = [], d = new Date(y, m, 1);
     while (d.getMonth() === m) { if (d.getDay() === 5) out.push(new Date(d)); d.setDate(d.getDate() + 1); }
     return [out[1], out[3]].filter(Boolean);
   }
-  function isRuleDay(d) { return fridays(d.getFullYear(), d.getMonth()).some(function (f) { return f.getDate() === d.getDate(); }); }
-  function isSession(d, ov) {
-    var k = iso(d);
-    if (ov.rm.indexOf(k) > -1) return false;
-    if (ov.add.indexOf(k) > -1) return true;
-    return isRuleDay(d);
+  function isSession(d) {
+    if (excluded.indexOf(iso(d)) > -1) return false;
+    return fridays(d.getFullYear(), d.getMonth()).some(function (f) { return f.getDate() === d.getDate(); });
   }
-  function computeNext(ov) {
+  function computeNext() {
     var now = new Date(), d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     for (var i = 0; i < 400; i++) {
       var end = new Date(d); end.setHours(20, 0, 0, 0);
-      if (end > now && isSession(d, ov)) return new Date(d);
+      if (end > now && isSession(d)) return new Date(d);
       d.setDate(d.getDate() + 1);
     }
     return null;
   }
   function renderNext() {
-    var d = computeNext(state.ov), when = "2nd & 4th Friday", whenNoTime = when;
+    var d = computeNext(), when = "2nd & 4th Friday", whenNoTime = when;
     if (d) {
       var day = d.toLocaleDateString("en-GB", { weekday: "short" });
       var month = d.toLocaleDateString("en-GB", { month: "short" });
@@ -293,50 +260,12 @@
   renderNext();
   setInterval(renderNext, 60 * 60 * 1000);
 
-  // Hidden session editor: tap the venue photo 7 times quickly
-  var secret = $("secret"), tapTimer;
-  function calState() { return state.cal || (state.cal = { y: new Date().getFullYear(), m: new Date().getMonth() }); }
-  function renderCal() {
-    var cal = calState(), first = new Date(cal.y, cal.m, 1);
-    var lead = (first.getDay() + 6) % 7, days = new Date(cal.y, cal.m + 1, 0).getDate();
-    $("cal-label").textContent = first.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
-    var box = $("cal-cells"); box.innerHTML = "";
-    for (var i = 0; i < lead; i++) box.appendChild(document.createElement("span"));
-    var base = state.draft || state.ov;
-    for (var n = 1; n <= days; n++) (function (n) {
-      var d = new Date(cal.y, cal.m, n), b = document.createElement("button");
-      b.type = "button"; b.textContent = n;
-      b.style.cssText = "aspect-ratio:1/1; min-height:40px; border:1px solid #101010; color:#101010; font-size:14px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; background:" + (isSession(d, base) ? "#F5C400" : "#FFFFFF");
-      b.addEventListener("click", function () { toggleDay(d); });
-      box.appendChild(b);
-    })(n);
+  if (EXCLUSIONS_URL) {
+    fetch(EXCLUSIONS_URL.replace(/\/$/, "") + "/api/exclusions")
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(); })
+      .then(function (j) { excluded = Array.isArray(j.dates) ? j.dates : []; renderNext(); })
+      .catch(function () {});
   }
-  function toggleDay(d) {
-    var k = iso(d), base = state.draft || state.ov;
-    var ov = { add: base.add.slice(), rm: base.rm.slice() };
-    var drop = function (arr, v) { var i = arr.indexOf(v); if (i > -1) arr.splice(i, 1); };
-    if (isSession(d, base)) { drop(ov.add, k); if (isRuleDay(d)) ov.rm.push(k); }
-    else { drop(ov.rm, k); if (!isRuleDay(d)) ov.add.push(k); }
-    state.draft = ov; renderCal();
-  }
-  function closeCal() { secret.style.display = "none"; state.draft = null; }
-  $("next-tap").addEventListener("click", function () {
-    state.taps++;
-    if (state.taps >= 7) {
-      state.taps = 0; state.draft = { add: state.ov.add.slice(), rm: state.ov.rm.slice() };
-      secret.style.display = "flex"; renderCal();
-    }
-    clearTimeout(tapTimer); tapTimer = setTimeout(function () { state.taps = 0; }, 600);
-  });
-  $("cal-close").addEventListener("click", closeCal);
-  $("cal-prev").addEventListener("click", function () { var c = calState(); state.cal = { y: c.m === 0 ? c.y - 1 : c.y, m: (c.m + 11) % 12 }; renderCal(); });
-  $("cal-next").addEventListener("click", function () { var c = calState(); state.cal = { y: c.m === 11 ? c.y + 1 : c.y, m: (c.m + 1) % 12 }; renderCal(); });
-  $("cal-reset").addEventListener("click", function () { state.draft = { add: state.ov.add.slice(), rm: state.ov.rm.slice() }; renderCal(); });
-  $("cal-save").addEventListener("click", function () {
-    state.ov = state.draft || { add: [], rm: [] };
-    try { localStorage.setItem(STORE, JSON.stringify(state.ov)); } catch (e) {}
-    closeCal(); renderNext();
-  });
 })();
 </script>
 </body>

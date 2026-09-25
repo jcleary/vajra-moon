@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Vajra Moon — Cancellations</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;700;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Archivo, Helvetica, Arial, sans-serif; color: #101010; background: #fff; -webkit-font-smoothing: antialiased; }
+  header { display: flex; align-items: stretch; justify-content: space-between; border-bottom: 1px solid #101010; }
+  header .brand { padding: 16px 20px; font-weight: 900; font-size: 19px; letter-spacing: -0.02em; }
+  header .tag { display: flex; align-items: center; padding: 0 20px; background: #F5C400; border-left: 1px solid #101010; font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; }
+  main { max-width: 720px; margin: 0 auto; padding: 40px 20px 80px; }
+  h1 { margin: 0 0 24px; font-size: clamp(28px, 6vw, 48px); line-height: .95; font-weight: 900; letter-spacing: -0.03em; }
+  h2 { margin: 40px 0 12px; font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; color: #123C8C; font-weight: 500; }
+  label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+  input { width: 100%; padding: 12px; border: 1px solid #101010; border-radius: 0; font: inherit; background: #fff; }
+  button { padding: 12px 18px; border: 1px solid #101010; background: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+  button.primary { background: #F5C400; font-weight: 900; }
+  button:hover { background: #123C8C; color: #fff; }
+  .row { display: grid; grid-template-columns: 1fr; gap: 14px; }
+  @media (min-width: 560px) { .row { grid-template-columns: 200px 1fr auto; align-items: end; } }
+  .bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  ul { list-style: none; margin: 0; padding: 0; border-top: 1px solid #101010; }
+  li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 0; border-bottom: 1px solid #101010; }
+  li.past { color: #777; }
+  li .d { font-weight: 900; letter-spacing: -0.02em; font-size: 18px; }
+  li .r { font-size: 14px; color: #555; margin-top: 2px; }
+  .msg { min-height: 20px; margin-top: 12px; font-size: 14px; font-weight: 700; }
+  .err { color: #B00020; }
+  .empty { padding: 20px 0; color: #555; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<header><div class="brand">Vajra Moon</div><div class="tag">Cancellations</div></header>
+<main>
+  <section id="login" hidden>
+    <h1>Enter passphrase</h1>
+    <form id="login-form" class="row" style="grid-template-columns:1fr auto">
+      <div><label for="pass">Passphrase</label><input id="pass" type="password" autocomplete="current-password" required></div>
+      <button class="primary" type="submit">Continue</button>
+    </form>
+    <div class="msg err" id="login-msg"></div>
+  </section>
+
+  <section id="app" hidden>
+    <div class="bar"><h1 style="margin:0">Cancelled sessions</h1><button id="logout" type="button">Log out</button></div>
+
+    <h2>Add exclusion</h2>
+    <form id="add-form" class="row">
+      <div><label for="date">Date</label><input id="date" type="date" required></div>
+      <div><label for="reason">Reason (private, optional)</label><input id="reason" type="text" maxlength="200" placeholder="e.g. Bank holiday"></div>
+      <button class="primary" type="submit">Save</button>
+    </form>
+    <div class="msg" id="add-msg"></div>
+
+    <div class="bar" style="margin-top:32px"><h2 style="margin:0">Exclusions</h2><button id="toggle-past" type="button">Show past</button></div>
+    <div style="height:12px"></div>
+    <ul id="list"></ul>
+    <div class="empty" id="empty" hidden></div>
+  </section>
+</main>
+<script>
+(function () {
+  var KEY = "vm-admin-passphrase";
+  var $ = function (id) { return document.getElementById(id); };
+  var items = [], showPast = false;
+
+  function getPass() { try { return localStorage.getItem(KEY); } catch (e) { return null; } }
+  function setPass(v) { try { v ? localStorage.setItem(KEY, v) : localStorage.removeItem(KEY); } catch (e) {} }
+  function today() { var d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+
+  function api(method, path, body, pass) {
+    return fetch(path, {
+      method: method,
+      headers: Object.assign({ authorization: "Bearer " + (pass || getPass()) }, body ? { "content-type": "application/json" } : {}),
+      body: body ? JSON.stringify(body) : undefined
+    });
+  }
+
+  function show(loggedIn) { $("login").hidden = loggedIn; $("app").hidden = !loggedIn; }
+  function logout(msg) { setPass(null); items = []; show(false); $("login-msg").textContent = msg || ""; $("pass").value = ""; $("pass").focus(); }
+
+  function fmt(iso) {
+    return new Date(iso + "T00:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "long", year: "numeric" });
+  }
+
+  function render() {
+    var t = today(), list = $("list"); list.innerHTML = "";
+    var shown = items.filter(function (i) { return showPast || i.date >= t; });
+    shown.forEach(function (i) {
+      var li = document.createElement("li"); if (i.date < t) li.className = "past";
+      var left = document.createElement("div");
+      var d = document.createElement("div"); d.className = "d"; d.textContent = fmt(i.date); left.appendChild(d);
+      if (i.reason) { var r = document.createElement("div"); r.className = "r"; r.textContent = i.reason; left.appendChild(r); }
+      var b = document.createElement("button"); b.type = "button"; b.textContent = "Delete";
+      b.addEventListener("click", function () { remove(i.date); });
+      li.appendChild(left); li.appendChild(b); list.appendChild(li);
+    });
+    var empty = $("empty");
+    empty.hidden = shown.length > 0;
+    empty.textContent = showPast ? "No exclusions yet." : "No upcoming exclusions.";
+    $("toggle-past").textContent = showPast ? "Hide past" : "Show past";
+  }
+
+  function load() {
+    return api("GET", "/api/admin/exclusions").then(function (res) {
+      if (res.status === 401) { logout("Passphrase not accepted."); return; }
+      return res.json().then(function (j) { items = j.exclusions; show(true); render(); });
+    });
+  }
+
+  function remove(date) {
+    if (!confirm("Delete the exclusion for " + fmt(date) + "?")) return;
+    api("DELETE", "/api/exclusions/" + date).then(function (res) {
+      if (res.status === 401) return logout("Passphrase not accepted.");
+      load();
+    });
+  }
+
+  $("login-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var p = $("pass").value;
+    api("GET", "/api/admin/exclusions", null, p).then(function (res) {
+      if (res.status === 401) { $("login-msg").textContent = "Passphrase not accepted."; return; }
+      setPass(p); $("login-msg").textContent = ""; load();
+    }).catch(function () { $("login-msg").textContent = "Could not reach the server."; });
+  });
+
+  $("add-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var msg = $("add-msg"); msg.className = "msg"; msg.textContent = "";
+    api("POST", "/api/exclusions", { date: $("date").value, reason: $("reason").value }).then(function (res) {
+      if (res.status === 401) return logout("Passphrase not accepted.");
+      if (!res.ok) { msg.className = "msg err"; msg.textContent = "Could not save."; return; }
+      msg.textContent = "Saved."; $("date").value = ""; $("reason").value = ""; load();
+    }).catch(function () { msg.className = "msg err"; msg.textContent = "Could not reach the server."; });
+  });
+
+  $("logout").addEventListener("click", function () { logout(); });
+  $("toggle-past").addEventListener("click", function () { showPast = !showPast; render(); });
+  $("date").min = today();
+
+  if (getPass()) load().catch(function () { show(true); $("empty").hidden = false; $("empty").textContent = "Could not reach the server."; });
+  else show(false);
+})();
+</script>
+</body>
+</html>
