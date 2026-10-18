@@ -261,24 +261,20 @@
     var when = "2nd & 4th Friday", whenNoTime = when;
     if (next) {
       var d = next;
-      var day = d.toLocaleDateString("en-GB", { weekday: "short" });
       var month = d.toLocaleDateString("en-GB", { month: "short" });
       var today = new Date(), DAY = 864e5;
       var mid = function (x) { return new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime(); };
-      var weekStart = function (x) { var s = new Date(x.getFullYear(), x.getMonth(), x.getDate()); s.setDate(s.getDate() - ((s.getDay() + 6) % 7)); return s; };
-      var weeks = Math.round((weekStart(d) - weekStart(today)) / (7 * DAY));
       var daysAway = Math.round((mid(d) - mid(today)) / DAY);
       var n = d.getDate();
       var suffix = (n % 10 === 1 && n !== 11) ? "st" : (n % 10 === 2 && n !== 12) ? "nd" : (n % 10 === 3 && n !== 13) ? "rd" : "th";
-      var stamp = "(" + n + suffix + " " + month + ")";
       var lead;
       if (daysAway === 0) lead = "Today";
       else if (daysAway === 1) lead = "Tomorrow";
-      else if (weeks === 0) lead = "This Friday";
-      else if (weeks === 1) lead = "Next Friday";
-      else lead = day + " " + n + suffix + " " + month;
-      var isDate = lead.indexOf(day) === 0;
-      whenNoTime = isDate ? lead : lead + " " + stamp;
+      else if (daysAway < 7) lead = "This Friday";
+      else if (daysAway < 14) lead = "Next Friday";
+      else lead = "Friday " + n + suffix + " " + month;
+      // Relative wording also shows the date in brackets; a full date doesn't need it
+      whenNoTime = daysAway >= 14 ? lead : lead + " (" + n + suffix + " " + month + ")";
       when = whenNoTime + ", 6–8pm";
     }
     setText("data-next-date", when);
